@@ -1,0 +1,225 @@
+import axios from 'axios';
+import nba from 'nba';
+
+import {
+  FETCH_PLAYERS, FETCH_BOXSCORES, FETCH_ERROR, FETCH_PLAYER, FETCH_TEAMS, FETCH_STANDINGS,
+  FETCH_REG_SEASON_PLAYER_STATS, FETCH_CAREER_REG_SEASON_PLAYER_STATS,
+  FETCH_TANKATHON, FETCH_BOXSCORE_TEAM_PLAYER_INFO, FETCH_TEAM, FETCH_TEAM_NEWS
+} from './types';
+
+const ROOT_URL = 'http://localhost:3090';
+export const TEAM_IMG_URL = `http://i.cdn.turner.com/nba/nba/assets/logos/teams/primary/web`;
+export const PLAYER_IMG_URL = `https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/latest/260x190`;
+/*************************** ASYNC ACTIONS ***************************/
+
+// Fetches basic boxscore data from server
+export function fetchBoxScoresServer(date) {
+  $('.scores').fadeOut();
+  $('.loading').css('display','inline');
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/boxscores`, {
+      params: {
+        date: date
+      }
+    })
+    .then((response) => {
+      return JSON.parse(response.request.response);
+    })
+    .then((response) => {
+      $('.loading').css('display','none');
+      $('.scores').fadeIn();
+      return dispatch(fetchBoxScores(response, date));
+    })
+    .catch((err) => {
+      return error(err);
+    });
+  }
+}
+// Fetches more boxscore information from server
+export function fetchBoxScoresTeamPlayerInfoServer(GameID) {
+  $('.boxscore-player-table').fadeOut();
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/boxscoresInfo`, {
+      params: {
+        GameID: GameID
+      }
+    })
+    .then((response) => JSON.parse(response.request.response))
+    .then((response) => {
+      $('.boxscore-player-table').fadeIn();
+      dispatch(fetchBoxScoresTeamPlayerInfo(response));
+    })
+    .catch((err) => dispatch(error(err)));
+  };
+}
+// Fetches player data for player profile
+export function fetchPlayerDataServer(PlayerID, player) {
+  // Split name: Lastname/firstname for headshot in profile
+  $('#player-profile').fadeOut();
+  $('.loading').css('display','inline');
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/player`, {
+      params: {
+        PlayerID: PlayerID
+      }
+    })
+    .then((res) => JSON.parse(res.request.response))
+    .then((res) => {
+      $('#player-profile').fadeIn();
+      $('.loading').css('display','none');
+      return dispatch(fetchPlayerData(res, player, PlayerID));
+    })
+    .catch((err) => {
+      return error(err);
+    });
+  }
+}
+
+export function fetchTeamDataServer(TeamID) {
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/team`, {
+      params: {
+        TeamID: TeamID
+      }
+    })
+    .then((res) => JSON.parse(res.request.response))
+    .then((res) => {
+      return dispatch(fetchTeamData(res))
+    })
+  }
+}
+
+export function fetchStandingsServer() {
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/standings`)
+    .then((res) => JSON.parse(res.request.response))
+    .then((res) => {
+      return dispatch(fetchStandings(res));
+    })
+    .catch((err) => {
+      return dispatch(error(err));
+    })
+  }
+}
+
+export function fetchTankathonServer() {
+  return function(dispatch) {
+    axios.get(`${ROOT_URL}/tankathon`)
+    .then((res) => JSON.parse(res.request.response))
+    .then((res) => dispatch(fetchTankathon(res)))
+    .catch((err) => dispatch(error(err)));
+  }
+}
+
+export function fetchPlayers() {
+  return (dispatch) => {
+      dispatch({ type: FETCH_PLAYERS, payload: nba.players });
+  };
+}
+
+export function fetchTeams() {
+  return (dispatch) => {
+    dispatch({ type: FETCH_TEAMS, payload: nba.teams });
+  }
+}
+
+export function fetchTeamNewsServer(ID, teamName) {
+  return (dispatch) => {
+    axios.get(`${ROOT_URL}/news`, {
+      params: {
+        ID: ID
+      }})
+    .then((res) => JSON.parse(res.request.response))
+    .then((res) => dispatch(fetchNews(res, teamName)))
+    .catch((err) => dispatch(error(err)));
+  }
+}
+/*****************************************************************************
+  SYNCHRONOUS ACTIONS
+*****************************************************************************/
+export function fetchStandings(standings) {
+  return {
+    type: FETCH_STANDINGS,
+    payload: standings
+  };
+}
+
+export function fetchNews(news, teamName) {
+  return {
+    type: FETCH_TEAM_NEWS,
+    payload: news,
+    team: teamName
+  };
+}
+
+export function fetchRegSeasonPlayerStats(e) {
+  //$('#player-stats-table').fadeIn();
+  return {
+    type: FETCH_REG_SEASON_PLAYER_STATS,
+    payload: e.currentTarget.id
+  };
+}
+
+export function fetchCareerRegSeasonPlayerStats() {
+  $('#player-stats-table').fadeIn();
+  return {
+    type: FETCH_CAREER_REG_SEASON_PLAYER_STATS
+  };
+}
+
+export function fetchTankathon(standings) {
+  return {
+    type: FETCH_TANKATHON,
+    payload: standings
+  }
+}
+
+function error(err) {
+  return {
+    type: FETCH_ERROR,
+    err
+  };
+}
+
+function fetchBoxScores(boxscores, date) {
+  const b = boxscores.stats;
+  return {
+    type: FETCH_BOXSCORES,
+    payload: b,
+    date: date
+  }
+}
+
+function fetchBoxScoresTeamPlayerInfo(stats) {
+  return {
+    type: FETCH_BOXSCORE_TEAM_PLAYER_INFO,
+    payload: stats
+  }
+}
+
+function fetchPlayerData(res, player, PlayerID) {
+  var p = player.split(' ');
+  // Nba.com img's
+  var _url = `${PLAYER_IMG_URL}/${PlayerID}.png`;
+
+  return {
+    type: FETCH_PLAYER,
+    payload: res,
+    img: _url,
+    name: player
+  };
+}
+
+function fetchTeamData(stats) {
+  return {
+    type: FETCH_TEAM,
+    payload: stats
+  };
+}
+
+
+
+
+
+
+/* END */
